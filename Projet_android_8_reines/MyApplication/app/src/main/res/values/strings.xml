@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">My Application</string>
+
+    <string name="Perdu">Perdu pour vous </string>
+    <string name="Echec">ALERTE !! </string>
+    <string name="Fermer">Fermer</string>
+    <string name="Quitter">Quitter jeu</string>
+    <string name="Partie_finie">fin partie</string>
+    <string name="Rejouer">Rejouer</string>
+    <string name="gagner">Bravo!! vous avez gagner!!</string>
+    <string name="button">passer au jeu</string>
+    <string name="jouer">Jouer 8 reines  </string>
+</resources>

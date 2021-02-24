@@ -1,0 +1,310 @@
+<!DOCTYPE aesl-source>
+<network>
+
+
+<!--list of global events-->
+
+
+<!--list of constants-->
+
+
+<!--show keywords state-->
+<keywords flag="true"/>
+
+
+<!--node thymio-II-->
+<node nodeId="59706" name="thymio-II">var val           #la valeur récupérée par le capteur de sol prox.ground.delta[0]
+var vitesse       #la commande qu'on va appliquer a nos moteur 
+var delta         #correction ajoutée ou soustraite ( pour le suivi de ligne )
+var g=800         #un niveau de grix
+var seuil=80
+var lecture=0     #variable pour dire si on est en mode lecture du code_barre
+var cpt_t_code=0  #variable pour dire on est dans un des intervals  
+var cpt_code=0    #compteur de code_barres
+var deplacer=1    #variable pour dire si on est en mode suivi de ligne ou pas 
+var etape_recul=0 #variable pour dire si on recule ou pas encore
+var recul=0       #compteur de temps de recul 
+var rotation=0    #si on est a l'etape rotation
+var cpt_r=0       #compteur temps de rotation
+var angle90=2200  #le temps emit par le robot pour faire un angle de 90degrés   						  #(calibration des angles faite avant )
+var s=0           # s=pour la commande selon le sens de rotation angle (+/-) 
+var d=0           # d=compteur de temps d'angle 
+var anglerot=0     #variable pour dire si on est dans la partie angle   
+var angle=0        #valeur de l'angle lu 
+var distance=0     #valeur de distance lue
+var parcourir_dist=0 #pour dire si on est dans la partie  deplacement dans assistance 
+var cpt_dist=0#temps de lecture d un code barres ,utilisé aprés pour la partie distance  
+var dist_1cm=0     #le temps emit par notre robot pour parcourir 1cm 
+var temp_dist=0    #compteur pour dire si on a parcouru la distance ou pas encore
+timer.period[0]=100
+timer.period[1]=440
+motor.left.target=112
+motor.right.target=112
+vitesse=motor.right.target
+
+
+#----------------fonction d'affichage de couleur ----------
+sub couleur
+## 0 = incolore, 1 = bleu, 2 = vert, 3 = bleu clair, 4 = rouge, 5 = rose foncé, 6 = jaune, 7 = grix
+				 	if  distance ==1 or angle ==1 then
+			 			call leds.top(0,0,32) end
+			 			if distance==2 or angle==2  then
+			 			call leds.top(0,32,0)end
+			 			if  distance==3 or angle==3 then
+			 				call leds.top(0,32,32)end
+			 				if distance==4 or angle==4 then
+			 					call leds.top(32,0,0)end
+			 					if  distance==5 or angle==5 then
+									call leds.top(32,0,32)end
+			 						if  distance==6 or angle==6 then
+			 								call leds.top(32,32,0)end
+			 								if distance==7 or angle==7 then
+			 										call leds.top(32,32,32)end
+
+ 
+#-----------------partie suivi de ligne -------------------------------
+onevent prox
+  if deplacer==1 then
+  	
+  
+		val = prox.ground.delta[0]
+		delta = prox.ground.delta[0]/39 
+	   
+	    	
+		if val &lt; g - seuil then
+			if motor.left.speed &lt; vitesse+delta then
+				motor.right.target=motor.right.target - delta
+				motor.left.target=motor.left.target + delta
+		    end	
+		end
+		if val > g + seuil then
+			if motor.right.speed &lt; vitesse+delta then
+				motor.left.target=motor.left.target - delta
+				motor.right.target=motor.right.target + delta
+			end
+		end
+		
+		if val > g - seuil and val &lt; g + seuil  then
+		motor.left.target=vitesse
+		motor.right.target=vitesse
+        end
+    
+#--------------------partie codes a barres --------------  
+if prox.ground.delta[1]&lt;700 then
+	lecture=1
+	
+end
+#les intervals(interval1= 8,interval2= 13,interval3= 18,interval4=23 
+if lecture==1 then
+    
+	if cpt_t_code==7 then
+		if prox.ground.delta[1]&lt;700 then
+		   if cpt_code==0 then
+		   distance=1
+		   else
+		   angle=1
+		   end
+		end
+	
+    elseif cpt_t_code==12 then
+		if prox.ground.delta[1]&lt;700 then
+		   if cpt_code==0 then
+		   distance+=2
+		   else
+		   angle+=2
+		   end
+		end
+
+    elseif cpt_t_code==16 then
+		if prox.ground.delta[1]&lt;700 then
+		   if cpt_code==0 then
+		   distance+=4
+		   else
+		   angle+=4
+		   end
+		end
+    callsub couleur
+    
+    elseif cpt_t_code==21 then
+	   if prox.ground.delta[1]>700 then
+	   	 lecture=0
+	   	 cpt_t_code=0
+	   	 cpt_code+=1
+	   	 
+	   end
+    end
+   
+   if cpt_code==2 and prox.ground.delta[0]>900  
+    then
+    	deplacer=0
+    	etape_recul=1
+    	
+    end
+end
+	
+end
+
+
+
+
+#-------reculer afin de faire correctement la rotation ----------
+
+
+if cpt_code==2 and etape_recul==1 then
+   recul++
+
+   if recul&lt;2 and etape_recul==1 then
+   motor.left.target=200
+   motor.right.target=200
+   
+   elseif recul==2 then
+   etape_recul=0
+   recul=0
+   rotation=1
+    end
+   
+end    
+#--------------rotation---------------------------
+if rotation==1 then
+    cpt_r++
+	if cpt_r==48 then
+		rotation=0
+        anglerot=1
+        #Tmotor.left.target=0
+        #motor.right.target=0
+	end
+
+
+end
+#-----------partie de l'angle ---------------------------
+#Remarque :on a choisi une faible vitesse (100) pour ne pas avoir de problème de glissement de roue.
+when anglerot==1 do
+
+    when angle==1 or angle==3 or angle==5 do
+		s=-100
+		d=0 
+		
+        
+	end
+	
+	when angle==2 or angle==4 or angle==6 do
+		s=100
+		d=0
+		
+       
+	end
+	when angle==0 or angle==7 do
+		parcourir_dist=1
+		
+	end
+	
+end
+#----------------------partie distance----------------------
+
+dist_1cm=(cpt_dist*10)/(27*4)    
+vitesse=180
+if parcourir_dist==1 then
+   	temp_dist++
+	if temp_dist&lt;dist_1cm*(distance*10) then  #ps on divise sur 4 la distance 
+#	   if prox.horizontal[6]!=0 then
+#                motor.right.target=-vitesse-delta
+#				motor.left.target=-vitesse
+#	   elseif prox.horizontal[5]!=0 then
+#                motor.right.target=-vitesse
+#				motor.left.target=-vitesse-delta
+#	   else
+#	   
+#		motor.left.target=-vitesse
+#	    motor.right.target=-vitesse
+#	    end
+#	     #call leds.top(0,0,0)
+        motor.left.target=-vitesse
+	    motor.right.target=-vitesse
+	    
+	else 
+	    motor.left.target=0
+	    motor.right.target=0
+	end
+end  
+
+
+#-----------partie timer  
+
+#--------cette partie pour lecture code_barre et compter le temps pour lire un code barre complet 
+
+
+onevent timer1
+if rotation==1 then
+motor.left.target=-100
+motor.right.target=100	
+end
+
+onevent timer0
+if lecture==1 and cpt_t_code&lt;21 then
+	cpt_t_code++                     
+	if cpt_code&lt;1 then
+		cpt_dist++                   
+	end
+		
+end
+
+
+
+#--------cette partie pour l angle 
+if anglerot==1 and parcourir_dist==0  then                  
+   
+   
+	 if (s!=0) 
+        then d++
+    end 
+     if (angle==5 or angle==6) then
+    	if (d>(angle90+(angle90/3))/100) then
+    		s=0
+    		d=0
+    		parcourir_dist=1
+    	end
+    end
+    if (angle==3 or angle==4) then
+    	if(d>angle90/100) then
+       	    s=0
+            d=0
+            parcourir_dist=1
+    	end
+    end 
+    if (angle==1 or angle==2)then
+    	if(d>((angle90/2)/100)) then
+    	   s=0 
+    	   d=0
+    	   parcourir_dist=1
+    	end	
+   
+    
+    end
+   motor.left.target=-s
+   motor.right.target=s
+  
+end
+
+#-----------------------------------------
+#initialiser tout a 0
+onevent button.center
+if button.center==0 then
+	cpt_code=0
+	cpt_r=0
+	anglerot=0
+	parcourir_dist=0
+	angle=0
+	distance=0
+	cpt_dist=0
+	dist_1cm=0
+	temp_dist=0
+	vitesse=0
+	
+end
+
+
+
+   </node>
+
+
+</network>
